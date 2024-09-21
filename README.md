@@ -73,3 +73,6 @@ Pay attention: @calindra/cartesify is intended to be used with [@calindra/cartes
    const json = await response.json();
    console.log(json) // will print the backend response as json
    ```
+
+### Axios
+
