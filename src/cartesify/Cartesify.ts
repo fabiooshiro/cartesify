@@ -2,8 +2,8 @@ import { Signer } from "ethers";
 import { CartesiClient, CartesiClientBuilder } from "..";
 import { AxiosLikeClient } from "./AxiosLikeClient";
 import { FetchFun, FetchOptions, fetch as _fetch } from "./FetchLikeClient";
-import { AxiosLikeClientV2 } from "./AxiosLikeClientV2";
 import { Config, AxiosSetupOptions, DeleteConfig, AxiosClient } from "../models/config";
+import { AxiosError } from "axios";
 export class Cartesify {
 
     axios: AxiosLikeClient
@@ -36,28 +36,57 @@ export class Cartesify {
         return fetchFun
     }
 
+    static async axiosAdaptedUsingFetch(cFetch: FetchFun, method: string, url: string, data: any, init?: Config) {
+        const requestHeaders = {
+            "Content-Type": "application/json",
+            ...init?.headers
+        }
+        const res = await cFetch(url, {
+            method,
+            headers: requestHeaders,
+            body: data !== undefined ? JSON.stringify(data) : undefined
+        }).catch(e => e)
+        if (res instanceof TypeError && (res.cause as any)?.code === "ECONNREFUSED") {
+            const cause = res.cause as any
+            throw new AxiosError(`${cause.syscall} ${cause.code} ${cause.address}:${cause.port}`)
+        }
+        if (!res.ok) {
+            const error = new AxiosError(`Request failed with status code ${res.status}`)
+            error.response = {
+                status: res.status
+            } as any
+            throw error
+        }
+        const responseHeaders = Object.fromEntries(res.headers)
+        return {
+            statusText: 'ok',
+            data: await res.json(),
+            headers: responseHeaders,
+            config: {
+                headers: requestHeaders
+            }
+        }
+    }
+
     static createAxios(options: AxiosSetupOptions): AxiosClient {
-        const builder = new CartesiClientBuilder()
-            .withDappAddress(options.dappAddress)
-            .withEndpoint(options.endpoints.inspect)
-            .withEndpointGraphQL(options.endpoints.graphQL);
-
-        if (options.provider) {
-            builder.withProvider(options.provider);
-        }
-
-        const cartesiClient = builder.build();
-
-        if (options.signer) {
-            cartesiClient.setSigner(options.signer);
-        }
+        const cFetch = Cartesify.createFetch(options)
 
         return {
-            get: (url: string, init?: Config) => AxiosLikeClientV2.executeRequest(cartesiClient, options, url, "GET", init),
-            post: (url: string, data?: Record<string, any>, init?: Config) => AxiosLikeClientV2.executeRequest(cartesiClient, options, url, "POST", init, data),
-            put: (url: string, data?: Record<string, any>, init?: Config) => AxiosLikeClientV2.executeRequest(cartesiClient, options, url, "PUT", init, data),
-            patch: (url: string, data?: Record<string, any>, init?: Config) => AxiosLikeClientV2.executeRequest(cartesiClient, options, url, "PATCH", init, data),
-            delete: (url: string, init?: DeleteConfig) => AxiosLikeClientV2.executeRequest(cartesiClient, options, url, "DELETE", init, init?.data)
+            get: (url: string, init?: Config) => {
+                return Cartesify.axiosAdaptedUsingFetch(cFetch, "GET", url, undefined, init)
+            },
+            post: async (url: string, data?: Record<string, any>, init?: Config) => {
+                return Cartesify.axiosAdaptedUsingFetch(cFetch, "POST", url, data, init)
+            },
+            put: (url: string, data?: Record<string, any>, init?: Config) => {
+                return Cartesify.axiosAdaptedUsingFetch(cFetch, "PUT", url, data, init)
+            },
+            patch: (url: string, data?: Record<string, any>, init?: Config) => {
+                return Cartesify.axiosAdaptedUsingFetch(cFetch, "PATCH", url, data, init)
+            },
+            delete: (url: string, init?: DeleteConfig) => {
+                return Cartesify.axiosAdaptedUsingFetch(cFetch, "DELETE", url, undefined, init)
+            }
         };
     }
 }

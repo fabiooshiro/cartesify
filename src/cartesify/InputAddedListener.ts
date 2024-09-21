@@ -79,7 +79,9 @@ export class InputAddedListener {
         if (lastReport.success) {
             wPromise.resolve!(lastReport)
         } else if (lastReport.error?.constructorName === "TypeError") {
-            const typeError = new TypeError(lastReport.error.message)
+            const typeError = new TypeError(lastReport.error.message, {
+                cause: lastReport.error.cause
+            })
             wPromise.reject!(typeError)
         } else if (lastReport.error) {
             wPromise.reject!(lastReport.error)

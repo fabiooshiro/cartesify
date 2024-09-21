@@ -8,9 +8,9 @@ describe("AxiosLikeClientV2", () => {
     const TEST_TIMEOUT = 300000
 
     // to test the behavior with real axios
-    let axiosLikeClient = axios
+    // let axiosLikeClient = axios
 
-    // let axiosLikeClient: AxiosClient
+    let axiosLikeClient: AxiosClient
 
     beforeAll(() => {
         const provider = ethers.getDefaultProvider("http://localhost:8545");
@@ -18,15 +18,15 @@ describe("AxiosLikeClientV2", () => {
         let signer = new ethers.Wallet(privateKey, provider);
 
         // to test the behavior of real axios the code below is commented
-        // axiosLikeClient = Cartesify.createAxios({
-        //     dappAddress: '0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e',
-        //     endpoints: {
-        //         graphQL: new URL("http://localhost:8080/graphql"),
-        //         inspect: new URL("http://localhost:8080/inspect"),
-        //     },
-        //     provider,
-        //     signer
-        // })
+        axiosLikeClient = Cartesify.createAxios({
+            dappAddress: '0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e',
+            endpoints: {
+                graphQL: new URL("http://localhost:8080/graphql"),
+                inspect: new URL("http://localhost:8080/inspect"),
+            },
+            provider,
+            signer
+        })
     })
 
     it("should work with GET", async () => {
@@ -89,7 +89,7 @@ describe("AxiosLikeClientV2", () => {
         expect(error.response.status).toBe(404)
     }, TEST_TIMEOUT)
 
-    it("should handle 'TypeError: fetch failed' doing POST. Connection refused", async () => {
+    it("should handle 'AxiosError' doing POST. Connection refused", async () => {
         const error = await axiosLikeClient.post("http://127.0.0.1:12345/wrongPort", { any: 'body' }, {
             headers: {
                 "Content-Type": "application/json",
@@ -102,12 +102,11 @@ describe("AxiosLikeClientV2", () => {
 
     it("should handle 'Error: connect ECONNREFUSED 127.0.0.1:12345' doing GET. Connection refused", async () => {
         const error = await axiosLikeClient.get("http://127.0.0.1:12345/wrongPort").catch((e: any) => e)
-        expect(error).toThrowError
-        expect(error.name).toBe("Error")
+        expect(error).toBeInstanceOf(Error)
         expect(error.message).toBe("connect ECONNREFUSED 127.0.0.1:12345")
     }, TEST_TIMEOUT)
 
-    it.skip("should send the msg_sender as x-msg_sender within the headers. Also send other metadata with 'x-' prefix", async () => {
+    it("should send the msg_sender as x-msg_sender within the headers. Also send other metadata with 'x-' prefix", async () => {
         const response = await axiosLikeClient.post("http://127.0.0.1:8383/echo/headers", { any: 'body' }, {
             headers: {
                 "Content-Type": "application/json",

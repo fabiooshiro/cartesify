@@ -103,7 +103,9 @@ async function doRequestWithInspect(url: string | URL | globalThis.Request, opti
                     return new Response(successOrError.success)
                 } else if (successOrError.error) {
                     if (successOrError.error?.constructorName === "TypeError") {
-                        throw new TypeError(successOrError.error.message)
+                        throw new TypeError(successOrError.error.message, {
+                            cause: successOrError.error.cause
+                        })
                     } else {
                         throw successOrError.error
                     }
